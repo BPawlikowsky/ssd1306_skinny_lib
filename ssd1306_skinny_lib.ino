@@ -1,194 +1,79 @@
 #include <Wire.h>
+#include "charSet.h"
 
 #define SCREEN_WIDTH 128  // OLED display width, in pixels
 #define SCREEN_HEIGHT 64  // OLED display height, in pixels
 #define COMMAND_CODE 0b00100000
 #define DATA_CODE 0x40
-#define BUFFER_LENGTH SCREEN_WIDTH * ((SCREEN_HEIGHT) / 8)
+#define BUFFER_LENGTH SCREEN_WIDTH *((SCREEN_HEIGHT) / 8)
 
 #define OLED_RESET -1        // Reset pin # (or -1 if sharing Arduino reset pin)
 #define SCREEN_ADDRESS 0x3d  ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
+#define CLK_SPEED 3400000
 
-#define LOGO_HEIGHT 16
-#define LOGO_WIDTH 16
 double currentTime, lastTime;
 
 constexpr size_t I2C_BUFFER_SIZE = 1024;
 
+uint8_t PROGMEM *buffer = (uint8_t *)malloc(BUFFER_LENGTH);
 
-const unsigned char PROGMEM numOne[] = {
-  0b00000000,
-  0b00000000,
-  0b10000010,
-  0b11111111,
-  0b10000000,
-  0b00000000,
-  0b00000000,
-  0b00000000
-};
-
-const unsigned char PROGMEM numTwo[] = {
-  0b00000000,
-  0b11100010,
-  0b10010001,
-  0b10001001,
-  0b11000110,
-  0b00000000,
-  0b00000000,
-  0b00000000
-};
-
-const unsigned char PROGMEM numThree[] = {
-  0b00000000,
-  0b01000010,
-  0b10000001,
-  0b10001001,
-  0b01110110,
-  0b00000000,
-  0b00000000,
-  0b00000000
-};
-
-const unsigned char PROGMEM numFour[] = {
-  0b00000000,
-  0b00001111,
-  0b00001000,
-  0b10001000,
-  0b11111111,
-  0b10000000,
-  0b00000000,
-  0b00000000
-};
-
-const unsigned char PROGMEM numFive[] = {
-  0b01000000,
-  0b10000111,
-  0b10000101,
-  0b10001001,
-  0b01110011,
-  0b00000000,
-  0b00000000,
-  0b00000000
-};
-
-const unsigned char PROGMEM numSix[] = {
-  0b00000000,
-  0b01111110,
-  0b10001001,
-  0b10001001,
-  0b01110010,
-  0b00000000,
-  0b00000000,
-  0b00000000
-};
-
-const unsigned char PROGMEM numSeven[] = {
-  0b00000000,
-  0b11100011,
-  0b00011001,
-  0b00000101,
-  0b00000011,
-  0b00000000,
-  0b00000000,
-  0b00000000
-};
-
-const unsigned char PROGMEM numEight[] = {
-  0b00000000,
-  0b01110110,
-  0b10001001,
-  0b10001001,
-  0b01110110,
-  0b00000000,
-  0b00000000,
-  0b00000000
-};
-
-const unsigned char PROGMEM numNine[] = {
-  0b00000000,
-  0b01000110,
-  0b10001001,
-  0b10001001,
-  0b01111110,
-  0b00000000,
-  0b00000000,
-  0b00000000
-};
-
-
-const unsigned char PROGMEM numZero[] = {
-  0b00000000,
-  0b01111110,
-  0b10000001,
-  0b10000001,
-  0b01111110,
-  0b00000000,
-  0b00000000,
-  0b00000000
-};
-
-const uint8_t PROGMEM *buffer = (uint8_t *)malloc(BUFFER_LENGTH);
+byte yOffset = 16;
+byte xOffset = 16;
+byte incDec = 1;
+byte incDec2 = 1;
 
 void setup() {
   int rstPin = -1;
   Serial.begin(9600);
   Wire.begin();
-  Wire.setClock(3400000);
+  Wire.setClock(CLK_SPEED);
   size_t res = Wire.setBufferSize(I2C_BUFFER_SIZE);
   Serial.println(res);
   startupSequence();
-  memset((uint8_t *)buffer, 0, BUFFER_LENGTH);
-  clearDisplay();
+  memset((uint8_t *)buffer, 0, BUFFER_LENGTH);  // clear buffer
+  sendBuffer();
 }
 
 void loop() {
-  clearDisplay();
-  byte offset = 24;
-  putPixel(offset, 16);
-  lastTime = millis();
-  for (int i = 0; i < 8; i++) {
+  sendBuffer();
+  byte offset = xOffset;
+  memset((uint8_t *)buffer, 0, BUFFER_LENGTH);  // clear buffer
+  for (byte i = 0; i < 8; i++) {
     int numOffset = 0;
-    putToBuffer(offset + i, 16);
-    dataCommand((byte)numOne[i]);
+    putToBuffer(offset + i, yOffset, numOne[i]);
 
     numOffset += 8;
-    putToBuffer(offset + i + numOffset, 16);
-    dataCommand(numTwo[i]);
+    putToBuffer(offset + i + numOffset, yOffset, numTwo[i]);
 
     numOffset += 8;
-    putToBuffer(offset + i + numOffset, 16);
-    dataCommand(numThree[i]);
+    putToBuffer(offset + i + numOffset, yOffset, numThree[i]);
 
     numOffset += 8;
-    putToBuffer(offset + i + numOffset, 16);
-    dataCommand(numFour[i]);
+    putToBuffer(offset + i + numOffset, yOffset, numFour[i]);
 
     numOffset += 8;
-    putToBuffer(offset + i + numOffset, 16);
-    dataCommand(numFive[i]);
+    putToBuffer(offset + i + numOffset, yOffset, numFive[i]);
 
     numOffset += 8;
-    putToBuffer(offset + i + numOffset, 16);
-    dataCommand(numSix[i]);
+    putToBuffer(offset + i + numOffset, yOffset, numSix[i]);
 
     numOffset += 8;
-    putToBuffer(offset + i + numOffset, 16);
-    dataCommand(numSeven[i]);
+    putToBuffer(offset + i + numOffset, yOffset, numSeven[i]);
 
     numOffset += 8;
-    putToBuffer(offset + i + numOffset, 16);
-    dataCommand(numEight[i]);
+    putToBuffer(offset + i + numOffset, yOffset, numEight[i]);
 
     numOffset += 8;
-    putToBuffer(offset + i + numOffset, 16);
-    dataCommand(numNine[i]);
+    putToBuffer(offset + i + numOffset, yOffset, numNine[i]);
 
     numOffset += 8;
-    putToBuffer(offset + i + numOffset, 16);
-    dataCommand(numZero[i]);
+    putToBuffer(offset + i + numOffset, yOffset, numZero[i]);
   }
-  currentTime = millis();
-  Serial.println(currentTime - lastTime);
+  byte yyy = yOffset;
+  if (yyy >= 55 || yyy <= 0) incDec = -incDec;
+  if (offset >= (128 - 80) || offset <= 0) incDec2 = -incDec2;
+  yOffset += incDec;
+  xOffset += incDec2;
 }
 
 void singleCommand(byte command) {
@@ -238,14 +123,11 @@ void startupSequence() {
   singleCommand(0xaf);           // Display On
 }
 
-void clearDisplay() {
-  lastTime = millis();
+void sendBuffer() {
   putPixel(0, 0);
   commandWithParam(0x20, 0x00);
-  bufferCommand((uint8_t*)buffer, BUFFER_LENGTH);
+  bufferCommand((uint8_t *)buffer, BUFFER_LENGTH);
   commandWithParam(0x20, 0x02);
-  currentTime = millis();
-  Serial.println(currentTime - lastTime);
 }
 
 void setPageAddress(byte p) {
@@ -267,5 +149,10 @@ void putPixel(byte x, byte y) {
 }
 
 void putToBuffer(byte x, byte y, uint8_t data) {
-  buffer[x + (128 * y)] = data;
+  int div = y / 8;
+  int rest = y - (8 * div);
+  uint8_t firstLine = data << rest;
+  uint8_t secondLine = data >> (8 - rest);
+  buffer[x + (128 * ((y / 8)))] = firstLine;
+  buffer[x + (128 * ((y / 8) + 1))] = secondLine;
 }
