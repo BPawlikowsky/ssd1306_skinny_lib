@@ -1,22 +1,19 @@
 #include "pgmspace.h"
 #include "stringToChar.hpp"
 #include <Arduino.h>
-char* binString(unsigned short n) {
-  char *bin = (char*)malloc(9 * sizeof(char));
-  int x;
 
-  for (x = 0; x < 8; x++) {
-    bin[x] = n & 0b10000000 ? '1' : '0';
-    n <<= 1;
-  }
-  bin[8] = '\0';
-
-  return (bin);
-}
-void getGlyph(char* font, uint8_t* arr) {
+void getGlyph(uint8_t* font, uint8_t* arr) {
   for (int i = 0; i < 9; i++) {
     arr[i] = font[i];
   }
+
+  // int height = 9;
+  // int width = 8;
+  // for (int x = 0; x < height; x++) {
+  //   for (int y = width - 1; y >= 0; y--) {
+  //     copyPixel(font, arr, x, y, width - y - 1, x);
+  //   }
+  // }
 }
 
 void rotateGlyph90CW(uint8_t* arr, int height) {
@@ -52,12 +49,12 @@ void copyPixel(uint8_t* src, uint8_t* dest, int srcX, int srcY, int destX, int d
   dest[destX + (128 * (destY / 8))] = destByte;
 }
 
-void stringToCharArray(char* text, uint8_t* buffer, char* font, int fontHeight, int fontWidth, uint16_t* lut, int x, int y) {
+void stringToCharArray(char* text, uint8_t* buffer, uint8_t* font, int fontHeight, int fontWidth, uint16_t* lut, int x, int y) {
   // Map text to glyphs
   char* p = text;
   char character;
   uint8_t* bp = buffer;
-  uint8_t* arr = (uint8_t*)malloc(fontHeight * 2 * sizeof(uint8_t));
+  uint8_t* arr = (uint8_t*)malloc(16 * 2 * sizeof(uint8_t));
   memset(arr, 0, fontHeight * 2 * sizeof(uint8_t));
 
   while ((character = *p) != '\0') {
@@ -68,24 +65,23 @@ void stringToCharArray(char* text, uint8_t* buffer, char* font, int fontHeight, 
       break;
     }
 
-    if((128 - pageOffset%128) <= fontWidth) {
-        bp+=(fontWidth + x);
+    if((128 - pageOffset%128) <= fontWidth + x) {
+        bp+=(endOfPageDist);
     }
-    Serial.printf("End of Page dist: %d\n", endOfPageDist);
 
     if(character == '\n') {
-      bp+=(endOfPageDist + x - fontWidth);
+      bp+=(endOfPageDist - x);
     } else if(character == '\t') {
       bp+=(fontWidth * 3);
     } else {
-      int offset = ((uint8_t)character) - ((uint8_t)' ');
-      char* fp = &font[lut[offset]];
+      int lutOffset = ((uint8_t)character) - ((uint8_t)' ');
+      uint8_t* fp = &font[lut[lutOffset]];
       
       getGlyph(fp, arr);
       rotateGlyph90CW(arr, fontHeight);
       for (int i = 0; i < fontWidth; i++) {
         bp[i + x + (128 * (y / 8))] = arr[i];
-        bp[i + 128 + x + (128 * (y / 8))] = arr[i + 9];
+        bp[i + 128 + x + (128 * (y / 8))] = arr[i + fontHeight];
       }
 
       bp += fontWidth;
