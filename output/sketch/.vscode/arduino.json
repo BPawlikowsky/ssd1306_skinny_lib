@@ -1,9 +1,0 @@
-#line 1 "/Users/bartsky/Documents/Arduino/ssd1306_skinny_lib/.vscode/arduino.json"
-{
-    "configuration": "PartitionScheme=default,CPUFreq=240,UploadSpeed=921600,FlashMode=qio,FlashFreq=80,DebugLevel=none,EraseFlash=none",
-    "board": "esp32:esp32:uPesy_wroom",
-    "programmer": "esptool",
-    "port": "/dev/tty.SLAB_USBtoUART",
-    "sketch": "ssd1306_skinny_lib.ino",
-    "output": "./output"
-}
