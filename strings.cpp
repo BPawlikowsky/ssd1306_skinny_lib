@@ -1,6 +1,4 @@
-#include "pgmspace.h"
-#include "stringToChar.hpp"
-#include <Arduino.h>
+#include "strings.hpp"
 
 char *binString(uint8_t n)
 {
@@ -41,16 +39,6 @@ void getGlyph(uint8_t* font, uint8_t* arr,int width, int height) {
       arr[i] = font[i];
     }
   }
-}
-
-void printBin(uint8_t* arr, char* message, int size, int height) {
-    
-  Serial.println(message);
-  for(int i = 0; i < (height * (size/height)); i++) {
-    Serial.print(binString(arr[i+height]));
-    Serial.println(binString(arr[i]));
-  }
-  Serial.println("");
 }
 
 void copyPixel(uint8_t* src, uint8_t* dest, int srcX, int srcY, int destX, int destY, int height) {
@@ -99,7 +87,7 @@ void rotateGlyph90CW(uint8_t* arr, int height, int width) {
   free(arrRot);
 }
 
-void stringToCharArray(char* text, uint8_t* buffer, uint8_t* font, int fontHeight, int fontWidth, uint16_t* lut, int x, int y) {
+void printRotatedString(char* text, uint8_t* buffer, uint8_t* font, int fontHeight, int fontWidth, uint16_t* lut, int x, int y) {
   // Map text to glyphs
   char* p = text;
   char character;
