@@ -70,12 +70,3 @@ void setLowerColAddress(uint8_t l) {
 void setHigherColAddress(uint8_t h) {
   singleCommand(0x10 + h);
 }
-
-void putToBuffer(uint8_t x, uint8_t y, uint8_t data, uint8_t* buffer) {
-  int div = y / 8;
-  int rest = y - (8 * div);
-  uint8_t firstLine = data << rest;
-  uint8_t secondLine = data >> (8 - rest);
-  buffer[x + (128 * ((y / 8)))] = firstLine;
-  buffer[x + (128 * ((y / 8) + 1))] = secondLine;
-}
