@@ -51,14 +51,14 @@ void copyPixel(uint8_t* src, uint8_t* dest, int srcX, int srcY, int destX, int d
   dest[destX + (height * (destY / 8))] = destByte;
 }
 
-void copyPixelToBuffer(uint8_t* src, uint8_t* dest, int srcX, int srcY, int destX, int destY, int height) {
+void copyPixelToBuffer(uint8_t* src, uint8_t* dest, int destWidth, int srcX, int srcY, int destX, int destY, int height) {
   int srcOffset = srcY - ((srcY / 8) * 8);
   int destOffset = destY - ((destY / 8) * 8);
   uint8_t mask = (0b00000001 << (7 - srcOffset));
   uint8_t srcByte = src[srcX + (height * (srcY / 8))] & mask;
   srcByte = srcByte >> (7 - srcOffset);
-  uint8_t destByte = dest[destX + (128 * (destY / 8))] | (((srcByte == 1) ? 0b00000001 : 0x00) << (destOffset));
-  dest[destX + (128 * (destY / 8))] = destByte;
+  uint8_t destByte = dest[destX + (destWidth * (destY / 8))] | (((srcByte == 1) ? 0b00000001 : 0x00) << (destOffset));
+  dest[destX + (destWidth * (destY / 8))] = destByte;
 }
 
 void rotateGlyph90CW(uint8_t* arr, int height, int width) {
@@ -87,7 +87,7 @@ void rotateGlyph90CW(uint8_t* arr, int height, int width) {
   free(arrRot);
 }
 
-void printRotatedString(char* text, uint8_t* buffer, uint8_t* font, int fontHeight, int fontWidth, uint16_t* lut, int x, int y) {
+void printRotatedString(char* text, uint8_t* buffer, int bufferWidth, uint8_t* font, int fontHeight, int fontWidth, uint16_t* lut, int x, int y) {
   // Map text to glyphs
   char* p = text;
   char character;
@@ -98,19 +98,19 @@ void printRotatedString(char* text, uint8_t* buffer, uint8_t* font, int fontHeig
 
   while ((character = *p) != '\0') {
     int pageOffset = bp - buffer;
-    int endOfPageDist = 128 - pageOffset%128;
+    int endOfPageDist = bufferWidth - pageOffset%bufferWidth;
 
-    if(bp - buffer > 128 * 8) {
+    if(bp - buffer > bufferWidth * 8) {
       break;
     }
 
     if((endOfPageDist) <= fontHeight + x) {
-      if(fontHeight >= 13) bp+=(128 + endOfPageDist);
+      if(fontHeight >= 13) bp+=(bufferWidth + endOfPageDist);
       else bp+=(endOfPageDist);
     }
 
     if(character == '\n') {
-      if(fontHeight >= 13) bp+=(128 + endOfPageDist - x);
+      if(fontHeight >= 13) bp+=(bufferWidth + endOfPageDist - x);
       else bp+=(endOfPageDist - x);
     } else if(character == '\t') {
       bp+=(fontWidth * 3);
@@ -121,14 +121,14 @@ void printRotatedString(char* text, uint8_t* buffer, uint8_t* font, int fontHeig
       rotateGlyph90CW(arr, fontHeight, fontWidth);
       if(fontHeight == 22) {
         for (int i = 0; i < fontWidth; i++) {
-          bp[i + x + (128 * (y / 8))] = arr[i];
-          bp[i + 128 + x + (128 * (y / 8))] = arr[i + fontHeight];
-          bp[i + 256 + x + (128 * (y / 8))] = arr[i + (fontHeight*2)];
+          bp[i + x + (bufferWidth * (y / 8))] = arr[i];
+          bp[i + bufferWidth + x + (bufferWidth * (y / 8))] = arr[i + fontHeight];
+          bp[i + (bufferWidth * 2) + x + (bufferWidth * (y / 8))] = arr[i + (fontHeight*2)];
         }
       } else {
         for (int i = 0; i < fontWidth; i++) {
-          bp[i + x + (128 * (y / 8))] = arr[i];
-          bp[i + 128 + x + (128 * (y / 8))] = arr[i + fontHeight];
+          bp[i + x + (bufferWidth * (y / 8))] = arr[i];
+          bp[i + bufferWidth + x + (bufferWidth * (y / 8))] = arr[i + fontHeight];
         }
       }
 
@@ -140,24 +140,24 @@ void printRotatedString(char* text, uint8_t* buffer, uint8_t* font, int fontHeig
   free(arr);
 }
 
-void printString(char* string, uint8_t* buffer, int bx, int by, char* font, int width, int height) {
+void printString(char* string, uint8_t* buffer, int bufferWidth, int bx, int by, char* font, int width, int height) {
   char character;
   int offset = 0;
   uint8_t* bp = buffer;
   while((character = *string++) != '\0') {
-    if(offset > 128 * 8) {
+    if(offset > bufferWidth * 8) {
       break;
     }
 
-    int endOfPageDist = 128 - ((offset + bx) - (128 * (offset/128)));
+    int endOfPageDist = bufferWidth - ((offset + bx) - (bufferWidth * (offset/bufferWidth)));
 
     if(endOfPageDist < height + 2) {
-      if(width >= 8) offset+=(128 + endOfPageDist + bx);
+      if(width >= 8) offset+=(bufferWidth + endOfPageDist + bx);
       else offset+=(endOfPageDist + bx);
     }
 
     if(character == '\n') {
-      if(width >= 8) offset+=(128 + endOfPageDist + bx - height);
+      if(width >= 8) offset+=(bufferWidth + endOfPageDist + bx - height);
       else offset+=(endOfPageDist + bx - height);
     } else if(character == '\t') {
       offset+=(width * 3);
@@ -165,7 +165,7 @@ void printString(char* string, uint8_t* buffer, int bx, int by, char* font, int 
       char* fp = &font[(character - ' ') * width];
       for (int x = 0; x < width; x++) {
         for (int y = 0; y < 8; y++) {
-          copyPixelToBuffer((uint8_t*)fp, bp, x, y, x + offset + bx, y + by, height);
+          copyPixelToBuffer((uint8_t*)fp, bp, bufferWidth, x, y, x + offset + bx, y + by, height);
         }
       }
     } else if(width < 12) {
@@ -174,8 +174,8 @@ void printString(char* string, uint8_t* buffer, int bx, int by, char* font, int 
       memset(arr, 0, width*2);
       getGlyph((uint8_t*)fp, arr, width, height);
       for (int x = 0; x < width; x++) {
-        for (int y = 0; y < height + 2; y++) {
-          copyPixelToBuffer(arr, bp, x, y, x + offset + bx, y + by, width);
+        for (int y = 0; y <= height + 3; y++) {
+          copyPixelToBuffer(arr, bp, bufferWidth, x, y, x + offset + bx, y + by, width);
         }
       }
     } else {
@@ -185,7 +185,7 @@ void printString(char* string, uint8_t* buffer, int bx, int by, char* font, int 
       getGlyph((uint8_t*)fp, arr, width, height);
       for (int x = 0; x < width; x++) {
         for (int y = 0; y < height; y++) {
-          copyPixelToBuffer(arr, bp, x, y, x + offset + bx, y + by, width);
+          copyPixelToBuffer(arr, bp, bufferWidth, x, y, x + offset + bx, y + by, width);
         }
       }
     }
